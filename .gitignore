@@ -1,11 +1,4 @@
-.idea/
-/assets/database/
-
-session.token
-application.yaml
-device.json
 *.log
-qrcode.png
 
 # Binaries for programs and plugins
 *.exe
