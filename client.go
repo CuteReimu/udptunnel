@@ -36,8 +36,8 @@ func (c *client) start() {
 		case *GetPortToc:
 			cs = &clientServer{client: c, tcpSession: ev.Session(), port: msg.Port}
 			cs.start()
-		case *UDPMessage:
-			cs.send(msg)
+		case *UDPMessageToc:
+			cs.send(&UDPMessage{Msg: msg.Msg})
 		}
 	})
 	p.Start()
@@ -73,7 +73,7 @@ func (c *clientServer) start() {
 		case *cellnet.SessionClosed:
 			log.Debugln("session closed: ", ev.Session().ID())
 		case *UDPMessage:
-			c.tcpSession.Send(msg)
+			c.tcpSession.Send(&UDPMessageTos{Msg: msg.Msg})
 		}
 	})
 	c.peer.Start()

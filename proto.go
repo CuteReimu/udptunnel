@@ -30,6 +30,14 @@ type UDPMessage struct {
 	Msg []byte
 }
 
+type UDPMessageTos struct {
+	Msg []byte
+}
+
+type UDPMessageToc struct {
+	Msg []byte
+}
+
 type UDPMessageTransmitter struct {
 }
 
@@ -68,6 +76,16 @@ func init() {
 		Codec: codec.MustGetCodec("binary"),
 		Type:  reflect.TypeOf((*UDPMessage)(nil)).Elem(),
 		ID:    3,
+	})
+	cellnet.RegisterMessageMeta(&cellnet.MessageMeta{
+		Codec: codec.MustGetCodec("binary"),
+		Type:  reflect.TypeOf((*UDPMessageTos)(nil)).Elem(),
+		ID:    4,
+	})
+	cellnet.RegisterMessageMeta(&cellnet.MessageMeta{
+		Codec: codec.MustGetCodec("binary"),
+		Type:  reflect.TypeOf((*UDPMessageToc)(nil)).Elem(),
+		ID:    5,
 	})
 	proc.RegisterProcessor("udp.pure", func(bundle proc.ProcessorBundle, userCallback cellnet.EventCallback) {
 		bundle.SetTransmitter(new(UDPMessageTransmitter))

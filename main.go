@@ -22,7 +22,7 @@ func main() {
 	}
 	answer := input("你是作为服务器还是客户端？1.服务器，2.客户端", func(ret int) bool { return ret == 1 || ret == 2 })
 	if answer == 1 {
-		port := input("请输入目标程序监听的端口，例如 5730", func(ret int64) bool { return ret >= 0 && ret <= 65535 })
+		port := input("请输入目标程序监听的端口，例如 5230", func(ret int64) bool { return ret >= 0 && ret <= 65535 })
 		(&server{port: port}).start()
 	} else {
 		address := input[string]("请输入连接的地址，例如 10.8.0.2")
