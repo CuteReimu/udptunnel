@@ -1,16 +1,15 @@
 package main
 
 import (
-	"os"
-	"os/signal"
-	"strconv"
-
+	"fmt"
 	"github.com/davyxu/cellnet"
 	"github.com/davyxu/cellnet/peer"
 	_ "github.com/davyxu/cellnet/peer/tcp"
 	_ "github.com/davyxu/cellnet/peer/udp"
 	"github.com/davyxu/cellnet/proc"
 	_ "github.com/davyxu/cellnet/proc/tcp"
+	"os"
+	"os/signal"
 )
 
 type client struct {
@@ -21,12 +20,13 @@ func (c *client) start() {
 	ch := make(chan os.Signal, 1)
 	queue := cellnet.NewEventQueue()
 	queue.EnableCapturePanic(true)
-	p := peer.NewGenericPeer("tcp.Connector", "server", c.address+":"+strconv.Itoa(*tunnelPort), queue)
+	p := peer.NewGenericPeer("tcp.Connector", "server", fmt.Sprint(c.address+":", *tunnelPort), queue)
 	var cs *clientServer
 	proc.BindProcessorHandler(p, "tcp.ltv", func(ev cellnet.Event) {
 		switch msg := ev.Message().(type) {
 		case *cellnet.SessionConnected:
 			log.Debugln("client connected: ", ev.Session().ID())
+			ev.Session().Send(&GetPortTos{})
 		case *cellnet.SessionConnectError:
 			log.Errorln("client connect failed: ", msg.String())
 			ch <- os.Interrupt
@@ -53,7 +53,7 @@ func (c *client) start() {
 }
 
 type clientServer struct {
-	port       int
+	port       int64
 	client     *client
 	tcpSession cellnet.Session
 	udpSession cellnet.Session
@@ -64,7 +64,7 @@ type clientServer struct {
 func (c *clientServer) start() {
 	c.queue = cellnet.NewEventQueue()
 	c.queue.EnableCapturePanic(true)
-	c.peer = peer.NewGenericPeer("udp.Acceptor", "server", "0.0.0.0:"+strconv.Itoa(c.port), c.queue)
+	c.peer = peer.NewGenericPeer("udp.Acceptor", "server", fmt.Sprint("0.0.0.0:", c.port), c.queue)
 	proc.BindProcessorHandler(c.peer, "udp.pure", func(ev cellnet.Event) {
 		switch msg := ev.Message().(type) {
 		case *cellnet.SessionAccepted:

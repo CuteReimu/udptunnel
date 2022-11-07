@@ -12,7 +12,7 @@ import (
 	rotatelogs "github.com/lestrrat-go/file-rotatelogs"
 )
 
-var tunnelPort = flag.Int("p", 12345, "tunnel port")
+var tunnelPort = flag.Int64("p", 12345, "tunnel port")
 
 func main() {
 	flag.Parse()
@@ -22,7 +22,7 @@ func main() {
 	}
 	answer := input("你是作为服务器还是客户端？1.服务器，2.客户端", func(ret int) bool { return ret == 1 || ret == 2 })
 	if answer == 1 {
-		port := input[int]("请输入目标程序监听的端口，例如 5730")
+		port := input("请输入目标程序监听的端口，例如 5730", func(ret int64) bool { return ret >= 0 && ret <= 65535 })
 		(&server{port: port}).start()
 	} else {
 		address := input[string]("请输入连接的地址，例如 10.8.0.2")

@@ -19,7 +19,7 @@ func (i *GetPortTos) String() string {
 }
 
 type GetPortToc struct {
-	Port int
+	Port int64
 }
 
 func (i *GetPortToc) String() string {

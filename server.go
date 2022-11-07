@@ -1,27 +1,26 @@
 package main
 
 import (
-	"os"
-	"os/signal"
-	"strconv"
-
+	"fmt"
 	"github.com/davyxu/cellnet"
 	"github.com/davyxu/cellnet/peer"
 	_ "github.com/davyxu/cellnet/peer/tcp"
 	_ "github.com/davyxu/cellnet/peer/udp"
 	"github.com/davyxu/cellnet/proc"
 	_ "github.com/davyxu/cellnet/proc/tcp"
+	"os"
+	"os/signal"
 )
 
 type server struct {
-	port int
+	port int64
 }
 
 func (s *server) start() {
 	cache := make(map[int64]*serverClient)
 	queue := cellnet.NewEventQueue()
 	queue.EnableCapturePanic(true)
-	p := peer.NewGenericPeer("tcp.Acceptor", "server", "0.0.0.0:"+strconv.Itoa(*tunnelPort), queue)
+	p := peer.NewGenericPeer("tcp.Acceptor", "server", fmt.Sprint("0.0.0.0:", *tunnelPort), queue)
 	proc.BindProcessorHandler(p, "tcp.ltv", func(ev cellnet.Event) {
 		switch msg := ev.Message().(type) {
 		case *cellnet.SessionAccepted:
@@ -62,7 +61,7 @@ type serverClient struct {
 func (c *serverClient) start() {
 	c.queue = cellnet.NewEventQueue()
 	c.queue.EnableCapturePanic(true)
-	c.peer = peer.NewGenericPeer("udp.Connector", "server", "127.0.0.1:"+strconv.Itoa(c.server.port), c.queue)
+	c.peer = peer.NewGenericPeer("udp.Connector", "server", fmt.Sprint("127.0.0.1:", c.server.port), c.queue)
 	proc.BindProcessorHandler(c.peer, "udp.pure", func(ev cellnet.Event) {
 		switch msg := ev.Message().(type) {
 		case *cellnet.SessionConnected:
