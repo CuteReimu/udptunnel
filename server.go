@@ -55,7 +55,7 @@ type serverClient struct {
 	tcpSession cellnet.Session
 	udpSession cellnet.Session
 	queue      cellnet.EventQueue
-	peer       cellnet.Peer
+	peer       cellnet.GenericPeer
 }
 
 func (c *serverClient) start() {
@@ -65,10 +65,7 @@ func (c *serverClient) start() {
 	proc.BindProcessorHandler(c.peer, "udp.pure", func(ev cellnet.Event) {
 		switch msg := ev.Message().(type) {
 		case *cellnet.SessionConnected:
-			log.Debugln("client connected: ", ev.Session().ID())
 			c.udpSession = ev.Session()
-		case *cellnet.SessionClosed:
-			log.Debugln("session closed: ", ev.Session().ID())
 		case *UDPMessage:
 			c.tcpSession.Send(&UDPMessageToc{Msg: msg.Msg})
 		}

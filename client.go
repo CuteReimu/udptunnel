@@ -67,18 +67,14 @@ func (c *clientServer) start() {
 	c.peer = peer.NewGenericPeer("udp.Acceptor", "server", fmt.Sprint("0.0.0.0:", c.port), c.queue)
 	proc.BindProcessorHandler(c.peer, "udp.pure", func(ev cellnet.Event) {
 		switch msg := ev.Message().(type) {
-		case *cellnet.SessionAccepted:
-			log.Debugln("server accepted: ", ev.Session().ID())
-			c.udpSession = ev.Session()
-		case *cellnet.SessionClosed:
-			log.Debugln("session closed: ", ev.Session().ID())
 		case *UDPMessage:
+			c.udpSession = ev.Session()
 			c.tcpSession.Send(&UDPMessageTos{Msg: msg.Msg})
 		}
 	})
 	c.peer.Start()
 	c.queue.StartLoop()
-	log.Infoln("udp start listen, port: ", &c)
+	log.Infoln("udp start listen, port: ", c.port)
 }
 
 func (c *clientServer) send(msg *UDPMessage) {
