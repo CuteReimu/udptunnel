@@ -53,7 +53,7 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
-	err = golog.SetOutput(".", &logWriter{fileWriter: writer})
+	err = golog.SetOutput("tunnel", &logWriter{fileWriter: writer})
 	if err != nil {
 		return
 	}

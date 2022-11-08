@@ -30,6 +30,10 @@ type UDPMessage struct {
 	Msg []byte
 }
 
+func (m *UDPMessage) String() string {
+	return fmt.Sprint(m.Msg)
+}
+
 type UDPMessageTos struct {
 	Msg []byte
 }
