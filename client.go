@@ -37,7 +37,7 @@ func (c *client) start() {
 			cs = &clientServer{client: c, tcpSession: ev.Session(), port: msg.Port}
 			cs.start()
 		case *UDPMessageToc:
-			cs.send(&UDPMessage{Msg: msg.Msg})
+			cs.send(&UDPMessage{Msg: append(([]byte)(nil), msg.Msg...)})
 		}
 	})
 	p.Start()
@@ -69,7 +69,7 @@ func (c *clientServer) start() {
 		switch msg := ev.Message().(type) {
 		case *UDPMessage:
 			c.udpSession = ev.Session()
-			c.tcpSession.Send(&UDPMessageTos{Msg: msg.Msg})
+			c.tcpSession.Send(&UDPMessageTos{Msg: append(([]byte)(nil), msg.Msg...)})
 		}
 	})
 	c.peer.Start()
