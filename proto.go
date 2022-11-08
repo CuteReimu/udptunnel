@@ -2,13 +2,13 @@ package main
 
 import (
 	"fmt"
-	"reflect"
-
 	"github.com/davyxu/cellnet"
 	"github.com/davyxu/cellnet/codec"
 	"github.com/davyxu/cellnet/msglog"
 	"github.com/davyxu/cellnet/peer/udp"
 	"github.com/davyxu/cellnet/proc"
+	"reflect"
+	"strings"
 )
 
 type GetPortTos struct {
@@ -31,15 +31,35 @@ type UDPMessage struct {
 }
 
 func (m *UDPMessage) String() string {
-	return fmt.Sprint(m.Msg)
+	ret := make([]string, len(m.Msg))
+	for i, b := range m.Msg {
+		ret[i] = fmt.Sprintf("%02x", b)
+	}
+	return strings.Join(ret, " ")
 }
 
 type UDPMessageTos struct {
 	Msg []byte
 }
 
+func (m *UDPMessageTos) String() string {
+	ret := make([]string, len(m.Msg))
+	for i, b := range m.Msg {
+		ret[i] = fmt.Sprintf("%02x", b)
+	}
+	return strings.Join(ret, " ")
+}
+
 type UDPMessageToc struct {
 	Msg []byte
+}
+
+func (m *UDPMessageToc) String() string {
+	ret := make([]string, len(m.Msg))
+	for i, b := range m.Msg {
+		ret[i] = fmt.Sprintf("%02x", b)
+	}
+	return strings.Join(ret, " ")
 }
 
 type UDPMessageTransmitter struct {
