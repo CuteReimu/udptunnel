@@ -94,11 +94,11 @@ func (s *server) removeTimeoutClient() {
 	for _, c := range s.cache {
 		if c.lastMsgTime.Add(s.timeout).Before(now) {
 			deleteClient = append(deleteClient, c.id)
-			queue := c.peer.Queue()
-			queue.StopLoop()
+			p := c.peer
+			p.Queue().StopLoop()
 			go func() {
-				queue.Wait()
-				c.peer.Stop()
+				p.Queue().Wait()
+				p.Stop()
 			}()
 		}
 	}
