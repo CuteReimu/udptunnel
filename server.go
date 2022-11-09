@@ -46,6 +46,7 @@ func (s *server) start(address string) {
 				cli.start()
 				s.cache[msg.FromId] = cli
 			}
+			cli.lastMsgTime = time.Now()
 			cli.peer.Session().Send(&UDPMessage{Msg: msg.Data})
 		}
 	})
