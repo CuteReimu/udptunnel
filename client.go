@@ -17,6 +17,7 @@ import (
 type client struct {
 	timeout time.Duration
 	peer    cellnet.TCPConnector
+	cs      *clientServer
 }
 
 func (c *client) start(address string) {
@@ -24,7 +25,6 @@ func (c *client) start(address string) {
 	queue := cellnet.NewEventQueue()
 	queue.EnableCapturePanic(true)
 	c.peer = peer.NewGenericPeer("tcp.Connector", "server", fmt.Sprint(address+":", *tunnelPort), queue).(cellnet.TCPConnector)
-	var cs *clientServer
 	proc.BindProcessorHandler(c.peer, "tcp.ltv", func(ev cellnet.Event) {
 		switch msg := ev.Message().(type) {
 		case *cellnet.SessionConnected:
@@ -45,7 +45,9 @@ func (c *client) start(address string) {
 				go c.waitForChooseServer(msg.List)
 			}
 		case *pb.UdpToc:
-			cs.send(&UDPMessage{Msg: msg.Data})
+			if c.cs != nil {
+				c.cs.send(&UDPMessage{Msg: msg.Data})
+			}
 		}
 	})
 	c.peer.Start()
@@ -53,13 +55,13 @@ func (c *client) start(address string) {
 	signal.Notify(ch, os.Interrupt)
 	<-ch
 	queue.StopLoop()
-	if cs != nil {
-		c.peer.Queue().StopLoop()
+	if c.cs != nil {
+		c.cs.peer.Queue().StopLoop()
 	}
 	queue.Wait()
-	if cs != nil {
-		c.peer.Queue().Wait()
-		cs.peer.Stop()
+	if c.cs != nil {
+		c.cs.peer.Queue().Wait()
+		c.cs.peer.Stop()
 	}
 	c.peer.Stop()
 }
@@ -74,7 +76,8 @@ func (c *client) waitForChooseServer(serverList []*pb.PbServer) {
 		id := input[int64]("请输入你要连接的服务器ID：")
 		for _, svr := range serverList {
 			if svr.Id == id {
-				(&clientServer{serverId: id, client: c, port: svr.Port}).start()
+				c.cs = &clientServer{serverId: id, client: c, port: svr.Port}
+				c.cs.start()
 				return
 			}
 		}
