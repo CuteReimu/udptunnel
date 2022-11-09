@@ -11,50 +11,11 @@ import (
 	"strings"
 )
 
-type GetPortTos struct {
-}
-
-func (i *GetPortTos) String() string {
-	return fmt.Sprintf("%+v", *i)
-}
-
-type GetPortToc struct {
-	Port int64
-}
-
-func (i *GetPortToc) String() string {
-	return fmt.Sprintf("%+v", *i)
-}
-
 type UDPMessage struct {
 	Msg []byte
 }
 
 func (m *UDPMessage) String() string {
-	ret := make([]string, len(m.Msg))
-	for i, b := range m.Msg {
-		ret[i] = fmt.Sprintf("%02x", b)
-	}
-	return strings.Join(ret, " ")
-}
-
-type UDPMessageTos struct {
-	Msg []byte
-}
-
-func (m *UDPMessageTos) String() string {
-	ret := make([]string, len(m.Msg))
-	for i, b := range m.Msg {
-		ret[i] = fmt.Sprintf("%02x", b)
-	}
-	return strings.Join(ret, " ")
-}
-
-type UDPMessageToc struct {
-	Msg []byte
-}
-
-func (m *UDPMessageToc) String() string {
 	ret := make([]string, len(m.Msg))
 	for i, b := range m.Msg {
 		ret[i] = fmt.Sprintf("%02x", b)
@@ -86,32 +47,11 @@ func (UDPMessageTransmitter) OnSendMessage(ses cellnet.Session, msg interface{})
 	return nil
 }
 
-// 将消息注册到系统
 func init() {
 	cellnet.RegisterMessageMeta(&cellnet.MessageMeta{
 		Codec: codec.MustGetCodec("binary"),
-		Type:  reflect.TypeOf((*GetPortTos)(nil)).Elem(),
-		ID:    1,
-	})
-	cellnet.RegisterMessageMeta(&cellnet.MessageMeta{
-		Codec: codec.MustGetCodec("binary"),
-		Type:  reflect.TypeOf((*GetPortToc)(nil)).Elem(),
-		ID:    2,
-	})
-	cellnet.RegisterMessageMeta(&cellnet.MessageMeta{
-		Codec: codec.MustGetCodec("binary"),
 		Type:  reflect.TypeOf((*UDPMessage)(nil)).Elem(),
-		ID:    3,
-	})
-	cellnet.RegisterMessageMeta(&cellnet.MessageMeta{
-		Codec: codec.MustGetCodec("binary"),
-		Type:  reflect.TypeOf((*UDPMessageTos)(nil)).Elem(),
-		ID:    4,
-	})
-	cellnet.RegisterMessageMeta(&cellnet.MessageMeta{
-		Codec: codec.MustGetCodec("binary"),
-		Type:  reflect.TypeOf((*UDPMessageToc)(nil)).Elem(),
-		ID:    5,
+		ID:    9999,
 	})
 	proc.RegisterProcessor("udp.pure", func(bundle proc.ProcessorBundle, userCallback cellnet.EventCallback) {
 		bundle.SetTransmitter(new(UDPMessageTransmitter))

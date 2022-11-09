@@ -15,6 +15,6 @@ go build -o udptunnel.exe
 
 然后双击运行生成出来的`udptunnel.exe`即可
 
-可以使用 `udptunnel.exe -h` 获取详细参数信息
+首先，你需要一个有公网ip的机器，在上面运行`udptunnel.exe -s`
 
-一方启动服务器，另一方启动客户端，之后再启动游戏创建房间，就能正常搜索房间了
+然后建房间的玩家启动`udptunnel.exe`之后选择服务器，其它玩家选择客户端。之后再在游戏中创建房间，就能正常搜索房间了

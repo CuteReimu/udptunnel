@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/CuteReimu/udptunnel/pb"
 	"github.com/davyxu/cellnet"
 	"github.com/davyxu/cellnet/peer"
 	_ "github.com/davyxu/cellnet/peer/tcp"
@@ -10,80 +11,118 @@ import (
 	_ "github.com/davyxu/cellnet/proc/tcp"
 	"os"
 	"os/signal"
+	"time"
 )
 
 type server struct {
-	port int64
+	port    uint32
+	timeout time.Duration
+	cache   map[int64]*serverClient // from_client_id => server_client
+	peer    cellnet.TCPConnector
 }
 
-func (s *server) start() {
-	cache := make(map[int64]*serverClient)
+func (s *server) start(address string) {
+	ch := make(chan os.Signal, 1)
+	s.cache = make(map[int64]*serverClient)
 	queue := cellnet.NewEventQueue()
 	queue.EnableCapturePanic(true)
-	p := peer.NewGenericPeer("tcp.Acceptor", "server", fmt.Sprint("0.0.0.0:", *tunnelPort), queue)
-	proc.BindProcessorHandler(p, "tcp.ltv", func(ev cellnet.Event) {
+	s.peer = peer.NewGenericPeer("tcp.Connector", "server", fmt.Sprint(address, ":", *tunnelPort), queue).(cellnet.TCPConnector)
+	proc.BindProcessorHandler(s.peer, "tcp.ltv", func(ev cellnet.Event) {
 		switch msg := ev.Message().(type) {
-		case *cellnet.SessionAccepted:
-			log.Debugln("server accepted: ", ev.Session().ID())
-			c := &serverClient{server: s, tcpSession: ev.Session()}
-			c.start()
-			cache[ev.Session().ID()] = c
+		case *cellnet.SessionConnected:
+			log.Debugln("server connected: ", ev.Session().ID())
+			go s.heart()
+			ev.Session().Send(&pb.CreateServerTos{Port: s.port})
+		case *cellnet.SessionConnectError:
+			log.Errorln("client connect failed: ", msg.String())
+			time.AfterFunc(3*time.Second, func() { ch <- os.Interrupt })
 		case *cellnet.SessionClosed:
 			log.Debugln("session closed: ", ev.Session().ID())
-			delete(cache, ev.Session().ID())
-		case *GetPortTos:
-			ev.Session().Send(&GetPortToc{Port: s.port})
-		case *UDPMessageTos:
-			cache[ev.Session().ID()].send(&UDPMessage{Msg: msg.Msg})
+			time.AfterFunc(3*time.Second, func() { ch <- os.Interrupt })
+		case *pb.UdpToc:
+			cli, ok := s.cache[msg.FromId]
+			if !ok {
+				cli = &serverClient{server: s, id: msg.FromId}
+				cli.start()
+				s.cache[msg.FromId] = cli
+			}
+			cli.peer.Session().Send(&UDPMessage{Msg: msg.Data})
 		}
 	})
-	p.Start()
+	s.peer.Start()
 	queue.StartLoop()
-	ch := make(chan os.Signal, 1)
+	go s.startTimeoutTimer()
 	signal.Notify(ch, os.Interrupt)
 	<-ch
 	queue.StopLoop()
-	queue.Wait()
-	for _, c := range cache {
-		c.stop()
+	for _, c := range s.cache {
+		c.peer.Queue().StopLoop()
 	}
-	p.Stop()
+	queue.Wait()
+	for _, c := range s.cache {
+		c.peer.Queue().Wait()
+	}
+	for _, c := range s.cache {
+		c.peer.Stop()
+	}
+	s.peer.Stop()
+}
+
+func (s *server) heart() {
+	ch := time.Tick(15 * time.Second)
+	for {
+		<-ch
+		s.peer.Session().Send(&pb.HeartTos{})
+	}
+}
+
+func (s *server) startTimeoutTimer() {
+	ch := time.Tick(time.Minute)
+	for {
+		<-ch
+		s.peer.Queue().Post(s.removeTimeoutClient)
+	}
+}
+
+func (s *server) removeTimeoutClient() {
+	if len(s.cache) == 0 {
+		return
+	}
+	deleteClient := make([]int64, 0, len(s.cache))
+	now := time.Now()
+	for _, c := range s.cache {
+		if c.lastMsgTime.Add(s.timeout).Before(now) {
+			deleteClient = append(deleteClient, c.id)
+			queue := c.peer.Queue()
+			queue.StopLoop()
+			go func() {
+				queue.Wait()
+				c.peer.Stop()
+			}()
+		}
+	}
+	for _, id := range deleteClient {
+		delete(s.cache, id)
+	}
 }
 
 type serverClient struct {
-	server     *server
-	tcpSession cellnet.Session
-	udpSession cellnet.Session
-	queue      cellnet.EventQueue
-	peer       cellnet.GenericPeer
+	server      *server
+	id          int64
+	peer        cellnet.UDPConnector
+	lastMsgTime time.Time
 }
 
 func (c *serverClient) start() {
-	c.queue = cellnet.NewEventQueue()
-	c.queue.EnableCapturePanic(true)
-	c.peer = peer.NewGenericPeer("udp.Connector", "server", fmt.Sprint("127.0.0.1:", c.server.port), c.queue)
+	queue := cellnet.NewEventQueue()
+	queue.EnableCapturePanic(true)
+	c.peer = peer.NewGenericPeer("udp.Connector", "server", fmt.Sprint("127.0.0.1:", c.server.port), queue).(cellnet.UDPConnector)
 	proc.BindProcessorHandler(c.peer, "udp.pure", func(ev cellnet.Event) {
 		switch msg := ev.Message().(type) {
-		case *cellnet.SessionConnected:
-			c.udpSession = ev.Session()
 		case *UDPMessage:
-			c.tcpSession.Send(&UDPMessageToc{Msg: msg.Msg})
+			c.server.peer.Session().Send(&pb.UdpTos{ToId: c.id, Data: msg.Msg})
 		}
 	})
 	c.peer.Start()
-	c.queue.StartLoop()
-}
-
-func (c *serverClient) send(msg *UDPMessage) {
-	c.queue.Post(func() {
-		if c.udpSession != nil {
-			c.udpSession.Send(msg)
-		}
-	})
-}
-
-func (c *serverClient) stop() {
-	c.queue.StopLoop()
-	c.queue.Wait()
-	c.peer.Stop()
+	queue.StartLoop()
 }
