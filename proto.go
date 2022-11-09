@@ -67,19 +67,21 @@ type UDPMessageTransmitter struct {
 
 func (UDPMessageTransmitter) OnRecvMessage(ses cellnet.Session) (msg interface{}, err error) {
 	data := ses.Raw().(udp.DataReader).ReadData()
-	msg = &UDPMessage{Msg: data}
+	m := make([]byte, len(data))
+	copy(m, data)
+	msg = &UDPMessage{Msg: m}
 	msglog.WriteRecvLogger(log, "udp", ses, msg)
 	return
 }
 
 func (UDPMessageTransmitter) OnSendMessage(ses cellnet.Session, msg interface{}) error {
 	writer := ses.(udp.DataWriter)
-	msglog.WriteSendLogger(log, "udp", ses, msg)
 	message, ok := msg.(*UDPMessage)
 	if !ok {
 		log.Warnf("unsupported message type: %T", message)
 		return nil
 	}
+	msglog.WriteSendLogger(log, "udp", ses, msg)
 	writer.WriteData(message.Msg)
 	return nil
 }

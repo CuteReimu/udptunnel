@@ -34,7 +34,7 @@ func (s *server) start() {
 		case *GetPortTos:
 			ev.Session().Send(&GetPortToc{Port: s.port})
 		case *UDPMessageTos:
-			cache[ev.Session().ID()].send(&UDPMessage{Msg: append(([]byte)(nil), msg.Msg...)})
+			cache[ev.Session().ID()].send(&UDPMessage{Msg: msg.Msg})
 		}
 	})
 	p.Start()
@@ -67,7 +67,7 @@ func (c *serverClient) start() {
 		case *cellnet.SessionConnected:
 			c.udpSession = ev.Session()
 		case *UDPMessage:
-			c.tcpSession.Send(&UDPMessageToc{Msg: append(([]byte)(nil), msg.Msg...)})
+			c.tcpSession.Send(&UDPMessageToc{Msg: msg.Msg})
 		}
 	})
 	c.peer.Start()
