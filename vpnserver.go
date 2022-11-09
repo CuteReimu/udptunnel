@@ -35,6 +35,7 @@ func (s *vpnServer) start() {
 			log.Debugln("session closed: ", ev.Session().ID())
 		case *pb.HeartTos:
 			ev.Session().(cellnet.ContextSet).SetContext(lastHeartTime, time.Now())
+			ev.Session().Send(&pb.HeartToc{})
 		case *pb.CreateServerTos:
 			ev.Session().(cellnet.ContextSet).SetContext("port", msg.Port)
 			ev.Session().Send(&pb.CreateServerToc{})
