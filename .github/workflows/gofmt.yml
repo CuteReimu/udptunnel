@@ -2,7 +2,7 @@ name: GoFmt
 
 on:
   push:
-    branches: [ master, simplified-version ]
+    branches: [ master ]
 
 jobs:
 
