@@ -2,10 +2,10 @@ package main
 
 import (
 	"fmt"
+	_ "github.com/CuteReimu/cellnet-plus/kcp"
 	"github.com/CuteReimu/udptunnel/pb"
 	"github.com/davyxu/cellnet"
 	"github.com/davyxu/cellnet/peer"
-	_ "github.com/davyxu/cellnet/peer/tcp"
 	_ "github.com/davyxu/cellnet/peer/udp"
 	"github.com/davyxu/cellnet/proc"
 	_ "github.com/davyxu/cellnet/proc/tcp"
@@ -24,7 +24,7 @@ func (c *client) start(address string) {
 	ch := make(chan os.Signal, 1)
 	queue := cellnet.NewEventQueue()
 	queue.EnableCapturePanic(true)
-	c.peer = peer.NewGenericPeer("tcp.Connector", "server", fmt.Sprint(address+":", *tunnelPort), queue).(cellnet.TCPConnector)
+	c.peer = peer.NewGenericPeer("kcp.Connector", "server", fmt.Sprint(address+":", *tunnelPort), queue).(cellnet.TCPConnector)
 	proc.BindProcessorHandler(c.peer, "tcp.ltv", func(ev cellnet.Event) {
 		switch msg := ev.Message().(type) {
 		case *cellnet.SessionConnected:

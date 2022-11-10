@@ -2,10 +2,10 @@ package main
 
 import (
 	"fmt"
+	_ "github.com/CuteReimu/cellnet-plus/kcp"
 	"github.com/CuteReimu/udptunnel/pb"
 	"github.com/davyxu/cellnet"
 	"github.com/davyxu/cellnet/peer"
-	_ "github.com/davyxu/cellnet/peer/tcp"
 	"github.com/davyxu/cellnet/proc"
 	_ "github.com/davyxu/cellnet/proc/tcp"
 	"net"
@@ -24,7 +24,7 @@ type vpnServer struct {
 func (s *vpnServer) start() {
 	queue := cellnet.NewEventQueue()
 	queue.EnableCapturePanic(true)
-	s.peer = peer.NewGenericPeer("tcp.Acceptor", "server", fmt.Sprint("0.0.0.0:", *tunnelPort), queue).(cellnet.TCPAcceptor)
+	s.peer = peer.NewGenericPeer("kcp.Acceptor", "server", fmt.Sprint("0.0.0.0:", *tunnelPort), queue).(cellnet.TCPAcceptor)
 	proc.BindProcessorHandler(s.peer, "tcp.ltv", func(ev cellnet.Event) {
 		switch msg := ev.Message().(type) {
 		case *cellnet.SessionAccepted:

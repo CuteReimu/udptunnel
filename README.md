@@ -5,7 +5,7 @@
 [![](https://img.shields.io/github/contributors/CuteReimu/udptunnel)](https://github.com/CuteReimu/udptunnel/graphs/contributors "贡献者")
 [![](https://img.shields.io/github/license/CuteReimu/udptunnel)](https://github.com/CuteReimu/udptunnel/blob/master/LICENSE "许可协议")
 
-考虑到联机时用udp进行广播搜索房间时，OpenVPN无法转发udp消息，因此做了一个tcp的tunnel，用于转发udp消息
+考虑到联机时用udp进行广播搜索房间时，OpenVPN无法转发udp消息，因此做了一个基于kcp的tunnel，用于转发udp消息
 
 ## 使用方法
 
