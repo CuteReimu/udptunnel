@@ -1,3 +1,0 @@
-@echo off
-echo generating vpn.proto...
-protoc --proto_path=. --go_out=. vpn.proto

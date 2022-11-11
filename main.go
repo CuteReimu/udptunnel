@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/davyxu/cellnet/msglog"
 	"io"
 	"os"
 	"path"
@@ -63,7 +62,6 @@ func input[T any](question string, check ...func(ret T) bool) (ret T) {
 var log = golog.New("tunnel")
 
 func init() {
-	msglog.SetCurrMsgLogMode(msglog.MsgLogMode_Mute)
 	log.SetLevel(golog.Level_Debug)
 	writer, err := rotatelogs.New(
 		path.Join("log", "%Y-%m-%d.log"),

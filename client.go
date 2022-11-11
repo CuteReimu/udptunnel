@@ -3,12 +3,12 @@ package main
 import (
 	"fmt"
 	_ "github.com/CuteReimu/cellnet-plus/kcp"
-	"github.com/CuteReimu/udptunnel/pb"
 	"github.com/davyxu/cellnet"
 	"github.com/davyxu/cellnet/peer"
 	_ "github.com/davyxu/cellnet/peer/udp"
 	"github.com/davyxu/cellnet/proc"
 	_ "github.com/davyxu/cellnet/proc/tcp"
+	"github.com/davyxu/cellnet/rpc"
 	"os"
 	"os/signal"
 	"time"
@@ -30,21 +30,14 @@ func (c *client) start(address string) {
 		case *cellnet.SessionConnected:
 			log.Debugln("client connected: ", ev.Session().ID())
 			go c.heart()
-			ev.Session().Send(&pb.GetAllServersTos{})
+			rpc.Call(ev.Session(), &GetAllServersTos{}, time.Second*3, c.waitForChooseServer)
 		case *cellnet.SessionConnectError:
 			log.Errorln("client connect failed: ", msg.String())
 			time.AfterFunc(3*time.Second, func() { ch <- os.Interrupt })
 		case *cellnet.SessionClosed:
 			log.Debugln("session closed: ", ev.Session().ID())
-			ch <- os.Interrupt
-		case *pb.GetAllServersToc:
-			if len(msg.List) == 0 {
-				fmt.Println("没有找到服务器房间，程序将在3秒后关闭")
-				time.AfterFunc(3*time.Second, func() { ch <- os.Interrupt })
-			} else {
-				go c.waitForChooseServer(msg.List)
-			}
-		case *pb.UdpToc:
+			time.AfterFunc(3*time.Second, func() { ch <- os.Interrupt })
+		case *UdpToc:
 			if c.cs != nil {
 				c.cs.send(&UDPMessage{Msg: msg.Data})
 			}
@@ -66,30 +59,54 @@ func (c *client) start(address string) {
 	c.peer.Stop()
 }
 
-func (c *client) waitForChooseServer(serverList []*pb.PbServer) {
-	for {
-		fmt.Println("当前服务器列表：")
-		for _, svr := range serverList {
-			fmt.Println(svr.Id, "  ", svr.Address)
+func (c *client) waitForChooseServer(raw interface{}) {
+	switch msg := raw.(type) {
+	case error:
+		fmt.Println("获取服务器列表超时，程序将在3秒后关闭")
+		time.AfterFunc(3*time.Second, func() { c.peer.Session().Close() })
+	case *GetAllServersToc:
+		serverList := msg.List
+		if len(serverList) == 0 {
+			fmt.Println("没有找到服务器房间，程序将在3秒后关闭")
+			time.AfterFunc(3*time.Second, func() { c.peer.Session().Close() })
+			break
 		}
-		fmt.Println("请选择你要连接的服务器：")
-		id := input[int64]("请输入你要连接的服务器ID：")
-		for _, svr := range serverList {
-			if svr.Id == id {
-				c.cs = &clientServer{serverId: id, client: c, port: svr.Port}
-				c.cs.start()
-				return
+		for {
+			fmt.Println("当前服务器列表：")
+			for _, svr := range serverList {
+				fmt.Println(svr.Id, "  ", svr.Address)
 			}
+			fmt.Println("请选择你要连接的服务器：")
+			id := input[int64]("请输入你要连接的服务器ID：")
+			for _, svr := range serverList {
+				if svr.Id == id {
+					c.cs = &clientServer{serverId: id, client: c, port: svr.Port}
+					c.cs.start()
+					return
+				}
+			}
+			fmt.Println("你输入的服务器ID不存在")
 		}
-		fmt.Println("你输入的服务器ID不存在")
 	}
 }
 
 func (c *client) heart() {
+	var count int
 	ch := time.Tick(15 * time.Second)
 	for {
 		<-ch
-		c.peer.Session().Send(&pb.HeartTos{})
+		_, err := rpc.CallSync(c.peer.Session(), &HeartTos{}, time.Second*3)
+		if err != nil {
+			count++
+			if count >= 10 {
+				log.Errorf("服务器已断开，程序即将关闭：%s", err.Error())
+				c.peer.Session().Close()
+				break
+			}
+			log.Errorf("服务器已断开，请检查网络连接：%s", err.Error())
+		} else {
+			count = 0
+		}
 	}
 }
 
@@ -109,7 +126,7 @@ func (c *clientServer) start() {
 		switch msg := ev.Message().(type) {
 		case *UDPMessage:
 			c.udpSession = ev.Session()
-			c.client.peer.Session().Send(&pb.UdpTos{ToId: c.serverId, Data: msg.Msg})
+			c.client.peer.Session().Send(&UdpTos{ToId: c.serverId, Data: msg.Msg})
 		}
 	})
 	c.peer.Start()

@@ -3,11 +3,11 @@ package main
 import (
 	"fmt"
 	_ "github.com/CuteReimu/cellnet-plus/kcp"
-	"github.com/CuteReimu/udptunnel/pb"
 	"github.com/davyxu/cellnet"
 	"github.com/davyxu/cellnet/peer"
 	"github.com/davyxu/cellnet/proc"
 	_ "github.com/davyxu/cellnet/proc/tcp"
+	"github.com/davyxu/cellnet/rpc"
 	"net"
 	"os"
 	"os/signal"
@@ -33,29 +33,41 @@ func (s *vpnServer) start() {
 			ctx.SetContext(lastHeartTime, time.Now())
 		case *cellnet.SessionClosed:
 			log.Debugln("session closed: ", ev.Session().ID())
-		case *pb.HeartTos:
+		case *HeartTos:
 			ev.Session().(cellnet.ContextSet).SetContext(lastHeartTime, time.Now())
-			ev.Session().Send(&pb.HeartToc{})
-		case *pb.CreateServerTos:
+			if rpcEvent, ok := ev.(*rpc.RecvMsgEvent); ok {
+				rpcEvent.Reply(&HeartToc{})
+			} else {
+				ev.Session().Send(&HeartToc{})
+			}
+		case *CreateServerTos:
 			ev.Session().(cellnet.ContextSet).SetContext("port", msg.Port)
-			ev.Session().Send(&pb.CreateServerToc{})
-		case *pb.GetAllServersTos:
-			resp := &pb.GetAllServersToc{}
+			if rpcEvent, ok := ev.(*rpc.RecvMsgEvent); ok {
+				rpcEvent.Reply(&CreateServerToc{})
+			} else {
+				ev.Session().Send(&CreateServerToc{})
+			}
+		case *GetAllServersTos:
+			resp := &GetAllServersToc{}
 			s.peer.VisitSession(func(session cellnet.Session) bool {
 				conn := session.(interface{ Conn() net.Conn }).Conn()
-				svr := &pb.PbServer{Id: session.ID(), Address: conn.RemoteAddr().String()}
+				svr := &PbServer{Id: session.ID(), Address: conn.RemoteAddr().String()}
 				if session.(cellnet.ContextSet).FetchContext("port", &svr.Port) {
 					resp.List = append(resp.List, svr)
 				}
 				return true
 			})
-			ev.Session().Send(resp)
-		case *pb.UdpTos:
+			if rpcEvent, ok := ev.(*rpc.RecvMsgEvent); ok {
+				rpcEvent.Reply(resp)
+			} else {
+				ev.Session().Send(resp)
+			}
+		case *UdpTos:
 			session := s.peer.GetSession(msg.ToId)
 			if session == nil {
 				log.Warnln("cannot find vpn client, id: ", msg.ToId)
 			} else {
-				session.Send(&pb.UdpToc{FromId: ev.Session().ID(), Data: msg.Data})
+				session.Send(&UdpToc{FromId: ev.Session().ID(), Data: msg.Data})
 			}
 		}
 	})

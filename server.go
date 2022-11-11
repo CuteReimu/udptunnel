@@ -3,12 +3,12 @@ package main
 import (
 	"fmt"
 	_ "github.com/CuteReimu/cellnet-plus/kcp"
-	"github.com/CuteReimu/udptunnel/pb"
 	"github.com/davyxu/cellnet"
 	"github.com/davyxu/cellnet/peer"
 	_ "github.com/davyxu/cellnet/peer/udp"
 	"github.com/davyxu/cellnet/proc"
 	_ "github.com/davyxu/cellnet/proc/tcp"
+	"github.com/davyxu/cellnet/rpc"
 	"os"
 	"os/signal"
 	"time"
@@ -32,14 +32,14 @@ func (s *server) start(address string) {
 		case *cellnet.SessionConnected:
 			log.Debugln("server connected: ", ev.Session().ID())
 			go s.heart()
-			ev.Session().Send(&pb.CreateServerTos{Port: s.port})
+			s.createServerRoom()
 		case *cellnet.SessionConnectError:
-			log.Errorln("client connect failed: ", msg.String())
+			log.Errorln("server connect failed: ", msg.String())
 			time.AfterFunc(3*time.Second, func() { ch <- os.Interrupt })
 		case *cellnet.SessionClosed:
 			log.Debugln("session closed: ", ev.Session().ID())
 			time.AfterFunc(3*time.Second, func() { ch <- os.Interrupt })
-		case *pb.UdpToc:
+		case *UdpToc:
 			cli, ok := s.cache[msg.FromId]
 			if !ok {
 				cli = &serverClient{server: s, id: msg.FromId}
@@ -70,10 +70,22 @@ func (s *server) start(address string) {
 }
 
 func (s *server) heart() {
+	var count int
 	ch := time.Tick(15 * time.Second)
 	for {
 		<-ch
-		s.peer.Session().Send(&pb.HeartTos{})
+		_, err := rpc.CallSync(s.peer.Session(), &HeartTos{}, time.Second*3)
+		if err != nil {
+			count++
+			if count >= 10 {
+				log.Errorf("服务器已断开，程序即将关闭：%s", err.Error())
+				s.peer.Session().Close()
+				break
+			}
+			log.Errorf("服务器已断开，请检查网络连接：%s", err.Error())
+		} else {
+			count = 0
+		}
 	}
 }
 
@@ -107,6 +119,17 @@ func (s *server) removeTimeoutClient() {
 	}
 }
 
+func (s *server) createServerRoom() {
+	rpc.Call(s.peer.Session(), &CreateServerTos{Port: s.port}, time.Second*3, func(raw interface{}) {
+		if err, ok := raw.(error); ok {
+			log.Errorln("创建服务器房间失败：", err)
+			s.peer.Session().Close()
+		} else {
+			log.Infof("创建服务器房间成功，等待客户端加入")
+		}
+	})
+}
+
 type serverClient struct {
 	server      *server
 	id          int64
@@ -121,7 +144,7 @@ func (c *serverClient) start() {
 	proc.BindProcessorHandler(c.peer, "udp.pure", func(ev cellnet.Event) {
 		switch msg := ev.Message().(type) {
 		case *UDPMessage:
-			c.server.peer.Session().Send(&pb.UdpTos{ToId: c.id, Data: msg.Msg})
+			c.server.peer.Session().Send(&UdpTos{ToId: c.id, Data: msg.Msg})
 		}
 	})
 	c.peer.Start()
