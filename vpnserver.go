@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	_ "github.com/CuteReimu/cellnet-plus/kcp"
+	"github.com/CuteReimu/udptunnel/pb"
 	"github.com/davyxu/cellnet"
 	"github.com/davyxu/cellnet/peer"
 	"github.com/davyxu/cellnet/proc"
@@ -33,15 +34,15 @@ func (s *vpnServer) start() {
 			ctx.SetContext(lastHeartTime, time.Now())
 		case *cellnet.SessionClosed:
 			log.Debugln("session closed: ", ev.Session().ID())
-		case *HeartTos:
+		case *pb.HeartTos:
 			ev.Session().(cellnet.ContextSet).SetContext(lastHeartTime, time.Now())
 			if rpcEvent, ok := ev.(*rpc.RecvMsgEvent); ok {
-				rpcEvent.Reply(&HeartToc{})
+				rpcEvent.Reply(&pb.HeartToc{})
 			} else {
-				ev.Session().Send(&HeartToc{})
+				ev.Session().Send(&pb.HeartToc{})
 			}
-		case *CreateServerTos:
-			resp := &CreateServerToc{}
+		case *pb.CreateServerTos:
+			resp := &pb.CreateServerToc{}
 			if msg.Port < 65536 {
 				ev.Session().(cellnet.ContextSet).SetContext("port", msg.Port)
 				resp.Success = true
@@ -51,11 +52,11 @@ func (s *vpnServer) start() {
 			} else {
 				ev.Session().Send(resp)
 			}
-		case *GetAllServersTos:
-			resp := &GetAllServersToc{}
+		case *pb.GetAllServersTos:
+			resp := &pb.GetAllServersToc{}
 			s.peer.VisitSession(func(session cellnet.Session) bool {
 				conn := session.(interface{ Conn() net.Conn }).Conn()
-				svr := &PbServer{Id: session.ID()}
+				svr := &pb.PbServer{Id: session.ID()}
 				if session.(cellnet.ContextSet).FetchContext("port", &svr.Port) {
 					svr.Address = conn.RemoteAddr().String()
 					udpAddr, err := net.ResolveUDPAddr(conn.RemoteAddr().Network(), svr.Address)
@@ -72,12 +73,12 @@ func (s *vpnServer) start() {
 			} else {
 				ev.Session().Send(resp)
 			}
-		case *UdpTos:
+		case *pb.UdpTos:
 			session := s.peer.GetSession(msg.ToId)
 			if session == nil {
 				log.Warnln("cannot find vpn client, id: ", msg.ToId)
 			} else {
-				session.Send(&UdpToc{FromId: ev.Session().ID(), Data: msg.Data})
+				session.Send(&pb.UdpToc{FromId: ev.Session().ID(), Data: msg.Data})
 			}
 		}
 	})

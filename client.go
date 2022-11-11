@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	_ "github.com/CuteReimu/cellnet-plus/kcp"
+	"github.com/CuteReimu/udptunnel/pb"
 	"github.com/davyxu/cellnet"
 	"github.com/davyxu/cellnet/peer"
 	_ "github.com/davyxu/cellnet/peer/udp"
@@ -30,14 +31,14 @@ func (c *client) start(address string) {
 		case *cellnet.SessionConnected:
 			log.Debugln("client connected: ", ev.Session().ID())
 			go c.heart()
-			rpc.Call(ev.Session(), &GetAllServersTos{}, time.Second*3, c.waitForChooseServer)
+			rpc.Call(ev.Session(), &pb.GetAllServersTos{}, time.Second*3, c.waitForChooseServer)
 		case *cellnet.SessionConnectError:
 			log.Errorln("client connect failed: ", msg.String())
 			time.AfterFunc(3*time.Second, func() { ch <- os.Interrupt })
 		case *cellnet.SessionClosed:
 			log.Debugln("session closed: ", ev.Session().ID())
 			time.AfterFunc(3*time.Second, func() { ch <- os.Interrupt })
-		case *UdpToc:
+		case *pb.UdpToc:
 			if c.cs != nil {
 				c.cs.send(&UDPMessage{Msg: msg.Data})
 			}
@@ -64,7 +65,7 @@ func (c *client) waitForChooseServer(raw interface{}) {
 	case error:
 		fmt.Println("获取服务器列表超时，程序将在3秒后关闭")
 		time.AfterFunc(3*time.Second, func() { c.peer.Session().Close() })
-	case *GetAllServersToc:
+	case *pb.GetAllServersToc:
 		serverList := msg.List
 		if len(serverList) == 0 {
 			fmt.Println("没有找到服务器房间，程序将在3秒后关闭")
@@ -95,7 +96,7 @@ func (c *client) heart() {
 	ch := time.Tick(15 * time.Second)
 	for {
 		<-ch
-		_, err := rpc.CallSync(c.peer.Session(), &HeartTos{}, time.Second*3)
+		_, err := rpc.CallSync(c.peer.Session(), &pb.HeartTos{}, time.Second*3)
 		if err != nil {
 			count++
 			if count >= 10 {
@@ -126,12 +127,11 @@ func (c *clientServer) start() {
 		switch msg := ev.Message().(type) {
 		case *UDPMessage:
 			c.udpSession = ev.Session()
-			c.client.peer.Session().Send(&UdpTos{ToId: c.serverId, Data: msg.Msg})
+			c.client.peer.Session().Send(&pb.UdpTos{ToId: c.serverId, Data: msg.Msg})
 		}
 	})
 	c.peer.Start()
 	queue.StartLoop()
-	log.Infoln("udp start listen, port: ", c.port)
 }
 
 func (c *clientServer) send(msg *UDPMessage) {

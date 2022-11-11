@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	_ "github.com/CuteReimu/cellnet-plus/kcp"
+	"github.com/CuteReimu/udptunnel/pb"
 	"github.com/davyxu/cellnet"
 	"github.com/davyxu/cellnet/peer"
 	_ "github.com/davyxu/cellnet/peer/udp"
@@ -39,7 +40,7 @@ func (s *server) start(address string) {
 		case *cellnet.SessionClosed:
 			log.Debugln("session closed: ", ev.Session().ID())
 			time.AfterFunc(3*time.Second, func() { ch <- os.Interrupt })
-		case *UdpToc:
+		case *pb.UdpToc:
 			cli, ok := s.cache[msg.FromId]
 			if !ok {
 				cli = &serverClient{server: s, id: msg.FromId}
@@ -74,7 +75,7 @@ func (s *server) heart() {
 	ch := time.Tick(15 * time.Second)
 	for {
 		<-ch
-		_, err := rpc.CallSync(s.peer.Session(), &HeartTos{}, time.Second*3)
+		_, err := rpc.CallSync(s.peer.Session(), &pb.HeartTos{}, time.Second*3)
 		if err != nil {
 			count++
 			if count >= 10 {
@@ -120,11 +121,11 @@ func (s *server) removeTimeoutClient() {
 }
 
 func (s *server) createServerRoom() {
-	rpc.Call(s.peer.Session(), &CreateServerTos{Port: s.port}, time.Second*3, func(raw interface{}) {
+	rpc.Call(s.peer.Session(), &pb.CreateServerTos{Port: s.port}, time.Second*3, func(raw interface{}) {
 		if err, ok := raw.(error); ok {
 			log.Errorln("创建服务器房间失败：", err)
 			s.peer.Session().Close()
-		} else if resp, ok := raw.(*CreateServerToc); ok && !resp.Success {
+		} else if resp, ok := raw.(*pb.CreateServerToc); ok && !resp.Success {
 			log.Errorln("创建服务器房间失败：", resp)
 			s.peer.Session().Close()
 		} else {
@@ -147,7 +148,7 @@ func (c *serverClient) start() {
 	proc.BindProcessorHandler(c.peer, "udp.pure", func(ev cellnet.Event) {
 		switch msg := ev.Message().(type) {
 		case *UDPMessage:
-			c.server.peer.Session().Send(&UdpTos{ToId: c.id, Data: msg.Msg})
+			c.server.peer.Session().Send(&pb.UdpTos{ToId: c.id, Data: msg.Msg})
 		}
 	})
 	c.peer.Start()
