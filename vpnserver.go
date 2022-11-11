@@ -41,18 +41,28 @@ func (s *vpnServer) start() {
 				ev.Session().Send(&HeartToc{})
 			}
 		case *CreateServerTos:
-			ev.Session().(cellnet.ContextSet).SetContext("port", msg.Port)
+			resp := &CreateServerToc{}
+			if msg.Port < 65536 {
+				ev.Session().(cellnet.ContextSet).SetContext("port", msg.Port)
+				resp.Success = true
+			}
 			if rpcEvent, ok := ev.(*rpc.RecvMsgEvent); ok {
-				rpcEvent.Reply(&CreateServerToc{})
+				rpcEvent.Reply(resp)
 			} else {
-				ev.Session().Send(&CreateServerToc{})
+				ev.Session().Send(resp)
 			}
 		case *GetAllServersTos:
 			resp := &GetAllServersToc{}
 			s.peer.VisitSession(func(session cellnet.Session) bool {
 				conn := session.(interface{ Conn() net.Conn }).Conn()
-				svr := &PbServer{Id: session.ID(), Address: conn.RemoteAddr().String()}
+				svr := &PbServer{Id: session.ID()}
 				if session.(cellnet.ContextSet).FetchContext("port", &svr.Port) {
+					svr.Address = conn.RemoteAddr().String()
+					udpAddr, err := net.ResolveUDPAddr(conn.RemoteAddr().Network(), svr.Address)
+					if err == nil {
+						udpAddr.Port = int(svr.Port)
+						svr.Address = udpAddr.String()
+					}
 					resp.List = append(resp.List, svr)
 				}
 				return true

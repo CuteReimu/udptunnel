@@ -24,6 +24,7 @@ type CreateServerTos struct {
 }
 
 type CreateServerToc struct {
+	Success bool
 }
 
 type GetAllServersTos struct {

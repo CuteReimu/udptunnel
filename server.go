@@ -124,6 +124,9 @@ func (s *server) createServerRoom() {
 		if err, ok := raw.(error); ok {
 			log.Errorln("创建服务器房间失败：", err)
 			s.peer.Session().Close()
+		} else if resp, ok := raw.(*CreateServerToc); ok && !resp.Success {
+			log.Errorln("创建服务器房间失败：", resp)
+			s.peer.Session().Close()
 		} else {
 			log.Infof("创建服务器房间成功，等待客户端加入")
 		}
