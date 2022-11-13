@@ -148,7 +148,7 @@ func (c *serverClient) start() {
 	queue := cellnet.NewEventQueue()
 	queue.EnableCapturePanic(true)
 	c.peer = peer.NewGenericPeer("udp.Connector", "server", fmt.Sprint("127.0.0.1:", c.server.port), queue).(cellnet.UDPConnector)
-	proc.BindProcessorHandler(c.peer, "udp.pure", func(ev cellnet.Event) {
+	proc.BindProcessorHandler(c.peer, "udp.packet", func(ev cellnet.Event) {
 		switch msg := ev.Message().(type) {
 		case *raw.Packet:
 			c.server.peer.Session().Send(&pb.UdpTos{ToId: c.id, Data: msg.Msg})
