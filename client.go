@@ -2,7 +2,10 @@ package main
 
 import (
 	"fmt"
-	_ "github.com/CuteReimu/cellnet-plus/kcp"
+	_ "github.com/CuteReimu/cellnet-plus/codec/protobuf"
+	"github.com/CuteReimu/cellnet-plus/codec/raw"
+	_ "github.com/CuteReimu/cellnet-plus/peer/kcp"
+	_ "github.com/CuteReimu/cellnet-plus/proc/udp"
 	"github.com/CuteReimu/udptunnel/pb"
 	"github.com/davyxu/cellnet"
 	"github.com/davyxu/cellnet/peer"
@@ -40,7 +43,7 @@ func (c *client) start(address string) {
 			time.AfterFunc(3*time.Second, func() { ch <- os.Interrupt })
 		case *pb.UdpToc:
 			if c.cs != nil {
-				c.cs.send(&UDPMessage{Msg: msg.Data})
+				c.cs.send(&raw.Packet{Msg: msg.Data})
 			}
 		}
 	})
@@ -123,9 +126,9 @@ func (c *clientServer) start() {
 	queue := cellnet.NewEventQueue()
 	queue.EnableCapturePanic(true)
 	c.peer = peer.NewGenericPeer("udp.Acceptor", "server", fmt.Sprint("0.0.0.0:", c.port), queue)
-	proc.BindProcessorHandler(c.peer, "udp.pure", func(ev cellnet.Event) {
+	proc.BindProcessorHandler(c.peer, "udp.packet", func(ev cellnet.Event) {
 		switch msg := ev.Message().(type) {
-		case *UDPMessage:
+		case *raw.Packet:
 			c.udpSession = ev.Session()
 			c.client.peer.Session().Send(&pb.UdpTos{ToId: c.serverId, Data: msg.Msg})
 		}
@@ -134,7 +137,7 @@ func (c *clientServer) start() {
 	queue.StartLoop()
 }
 
-func (c *clientServer) send(msg *UDPMessage) {
+func (c *clientServer) send(msg *raw.Packet) {
 	c.peer.Queue().Post(func() {
 		if c.udpSession != nil {
 			c.udpSession.Send(msg)

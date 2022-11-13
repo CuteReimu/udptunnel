@@ -2,7 +2,10 @@ package main
 
 import (
 	"fmt"
-	_ "github.com/CuteReimu/cellnet-plus/kcp"
+	_ "github.com/CuteReimu/cellnet-plus/codec/protobuf"
+	"github.com/CuteReimu/cellnet-plus/codec/raw"
+	_ "github.com/CuteReimu/cellnet-plus/peer/kcp"
+	_ "github.com/CuteReimu/cellnet-plus/proc/udp"
 	"github.com/CuteReimu/udptunnel/pb"
 	"github.com/davyxu/cellnet"
 	"github.com/davyxu/cellnet/peer"
@@ -48,7 +51,7 @@ func (s *server) start(address string) {
 				s.cache[msg.FromId] = cli
 			}
 			cli.lastMsgTime = time.Now()
-			cli.peer.Session().Send(&UDPMessage{Msg: msg.Data})
+			cli.peer.Session().Send(&raw.Packet{Msg: msg.Data})
 		}
 	})
 	s.peer.Start()
@@ -147,7 +150,7 @@ func (c *serverClient) start() {
 	c.peer = peer.NewGenericPeer("udp.Connector", "server", fmt.Sprint("127.0.0.1:", c.server.port), queue).(cellnet.UDPConnector)
 	proc.BindProcessorHandler(c.peer, "udp.pure", func(ev cellnet.Event) {
 		switch msg := ev.Message().(type) {
-		case *UDPMessage:
+		case *raw.Packet:
 			c.server.peer.Session().Send(&pb.UdpTos{ToId: c.id, Data: msg.Msg})
 		}
 	})

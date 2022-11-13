@@ -3,7 +3,7 @@ module github.com/CuteReimu/udptunnel
 go 1.19
 
 require (
-	github.com/CuteReimu/cellnet-plus v0.0.0-20221111043902-b31bf6fcb620
+	github.com/CuteReimu/cellnet-plus v0.0.0-20221113105912-27f63e3da64b
 	github.com/davyxu/cellnet v4.1.0+incompatible
 	github.com/davyxu/golog v0.1.0
 	github.com/lestrrat-go/file-rotatelogs v2.4.0+incompatible

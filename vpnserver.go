@@ -2,7 +2,9 @@ package main
 
 import (
 	"fmt"
-	_ "github.com/CuteReimu/cellnet-plus/kcp"
+	_ "github.com/CuteReimu/cellnet-plus/codec/protobuf"
+	_ "github.com/CuteReimu/cellnet-plus/peer/kcp"
+	"github.com/CuteReimu/cellnet-plus/util"
 	"github.com/CuteReimu/udptunnel/pb"
 	"github.com/davyxu/cellnet"
 	"github.com/davyxu/cellnet/peer"
@@ -113,4 +115,8 @@ func (s *vpnServer) removeTimeoutRoom() {
 		}
 		return true
 	})
+}
+
+func init() {
+	util.RegisterAllProtobuf()
 }
