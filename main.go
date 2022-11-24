@@ -75,7 +75,7 @@ func init() {
 	}
 	err = golog.SetOutput("tunnel", &logWriter{fileWriter: writer})
 	if err != nil {
-		return
+		panic(err)
 	}
 }
 
