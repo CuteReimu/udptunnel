@@ -1,7 +1,7 @@
 # UDP Tunnel
 
 ![](https://img.shields.io/github/languages/top/CuteReimu/udptunnel "语言")
-[![](https://img.shields.io/github/workflow/status/CuteReimu/udptunnel/Go)](https://github.com/CuteReimu/udptunnel/actions/workflows/golangci-lint.yml "代码分析")
+[![](https://img.shields.io/github/actions/workflow/status/CuteReimu/udptunnel/golangci-lint.yml?branch=master)](https://github.com/CuteReimu/udptunnel/actions/workflows/golangci-lint.yml "代码分析")
 [![](https://img.shields.io/github/contributors/CuteReimu/udptunnel)](https://github.com/CuteReimu/udptunnel/graphs/contributors "贡献者")
 [![](https://img.shields.io/github/license/CuteReimu/udptunnel)](https://github.com/CuteReimu/udptunnel/blob/master/LICENSE "许可协议")
 
