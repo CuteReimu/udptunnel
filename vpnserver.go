@@ -14,6 +14,7 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"runtime/debug"
 	"time"
 )
 
@@ -25,10 +26,13 @@ type vpnServer struct {
 }
 
 func (s *vpnServer) start() {
-	queue := cellnet.NewEventQueue()
-	queue.EnableCapturePanic(true)
-	s.peer = peer.NewGenericPeer("kcp.Acceptor", "server", fmt.Sprint("0.0.0.0:", *tunnelPort), queue).(cellnet.TCPAcceptor)
+	s.peer = peer.NewGenericPeer("kcp.Acceptor", "server", fmt.Sprint("0.0.0.0:", *tunnelPort), nil).(cellnet.TCPAcceptor)
 	proc.BindProcessorHandler(s.peer, "tcp.ltv", func(ev cellnet.Event) {
+		defer func() {
+			if e := recover(); e != nil {
+				log.Errorf("%v \n%s\n", e, string(debug.Stack()))
+			}
+		}()
 		switch msg := ev.Message().(type) {
 		case *cellnet.SessionAccepted:
 			log.Debugln("server accepted: ", ev.Session().ID())
@@ -85,36 +89,28 @@ func (s *vpnServer) start() {
 		}
 	})
 	s.peer.Start()
-	queue.StartLoop()
 	go s.startRemoveTimeoutTimer()
 	ch := make(chan os.Signal, 1)
 	signal.Notify(ch, os.Interrupt)
 	<-ch
-	queue.StopLoop()
-	queue.Wait()
 	s.peer.Stop()
 }
 
 func (s *vpnServer) startRemoveTimeoutTimer() {
 	ch := time.Tick(15 * time.Second)
-	for {
-		<-ch
-		s.peer.Queue().Post(s.removeTimeoutRoom)
-	}
-}
-
-func (s *vpnServer) removeTimeoutRoom() {
-	if s.peer.SessionCount() == 0 {
-		return
-	}
-	now := time.Now()
-	s.peer.VisitSession(func(session cellnet.Session) bool {
-		lt, _ := session.(cellnet.ContextSet).GetContext(lastHeartTime)
-		if lt.(time.Time).Add(s.timeout).Before(now) {
-			session.Close()
+	for range ch {
+		if s.peer.SessionCount() == 0 {
+			return
 		}
-		return true
-	})
+		now := time.Now()
+		s.peer.VisitSession(func(session cellnet.Session) bool {
+			lt, _ := session.(cellnet.ContextSet).GetContext(lastHeartTime)
+			if lt.(time.Time).Add(s.timeout).Before(now) {
+				session.Close()
+			}
+			return true
+		})
+	}
 }
 
 func init() {
