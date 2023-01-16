@@ -15,13 +15,14 @@ import (
 	"github.com/davyxu/cellnet/rpc"
 	"os"
 	"os/signal"
+	"sync/atomic"
 	"time"
 )
 
 type client struct {
 	timeout time.Duration
 	peer    cellnet.TCPConnector
-	cs      *clientServer
+	cs      atomic.Pointer[clientServer]
 }
 
 func (c *client) start(address string) {
@@ -42,8 +43,8 @@ func (c *client) start(address string) {
 			log.Debugln("session closed: ", ev.Session().ID())
 			time.AfterFunc(3*time.Second, func() { ch <- os.Interrupt })
 		case *pb.UdpToc:
-			if c.cs != nil {
-				c.cs.send(&raw.Packet{Msg: msg.Data})
+			if cs := c.cs.Load(); cs != nil {
+				cs.send(&raw.Packet{Msg: msg.Data})
 			}
 		}
 	})
@@ -52,13 +53,14 @@ func (c *client) start(address string) {
 	signal.Notify(ch, os.Interrupt)
 	<-ch
 	queue.StopLoop()
-	if c.cs != nil {
-		c.cs.peer.Queue().StopLoop()
+	cs := c.cs.Load()
+	if cs != nil {
+		cs.peer.Queue().StopLoop()
 	}
 	queue.Wait()
-	if c.cs != nil {
-		c.cs.peer.Queue().Wait()
-		c.cs.peer.Stop()
+	if cs != nil {
+		cs.peer.Queue().Wait()
+		cs.peer.Stop()
 	}
 	c.peer.Stop()
 }
@@ -84,8 +86,9 @@ func (c *client) waitForChooseServer(raw interface{}) {
 			id := input[int64]("请输入你要连接的服务器ID：")
 			for _, svr := range serverList {
 				if svr.Id == id {
-					c.cs = &clientServer{serverId: id, client: c, port: svr.Port}
-					c.cs.start()
+					cs := &clientServer{serverId: id, client: c, port: svr.Port}
+					cs.start()
+					c.cs.Store(cs)
 					return
 				}
 			}
