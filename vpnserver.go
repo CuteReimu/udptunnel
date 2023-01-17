@@ -18,6 +18,7 @@ import (
 	"time"
 )
 
+//go:generate protoc --proto_path=. --go_out=. vpn.proto
 const lastHeartTime = "last_heart_time"
 
 type vpnServer struct {
