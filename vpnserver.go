@@ -100,7 +100,7 @@ func (s *vpnServer) startRemoveTimeoutTimer() {
 	ch := time.Tick(15 * time.Second)
 	for range ch {
 		if s.peer.SessionCount() == 0 {
-			return
+			continue
 		}
 		now := time.Now()
 		s.peer.VisitSession(func(session cellnet.Session) bool {
