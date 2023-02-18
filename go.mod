@@ -24,6 +24,6 @@ require (
 	github.com/tjfoc/gmsm v1.4.1 // indirect
 	github.com/xtaci/kcp-go/v5 v5.6.2 // indirect
 	golang.org/x/crypto v0.5.0 // indirect
-	golang.org/x/net v0.5.0 // indirect
+	golang.org/x/net v0.7.0 // indirect
 	golang.org/x/sys v0.5.0 // indirect
 )
