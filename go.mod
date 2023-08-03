@@ -1,6 +1,6 @@
 module github.com/CuteReimu/udptunnel
 
-go 1.19
+go 1.20
 
 require (
 	github.com/CuteReimu/cellnet-plus v0.0.0-20230208063035-d7ac898e28bc
